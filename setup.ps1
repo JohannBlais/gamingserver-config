@@ -86,7 +86,8 @@ $serviceExists = nssm status EnshroudedServer 2>&1
 if ($serviceExists -match "SERVICE_") {
     Write-Host "Le service EnshroudedServer existe déjà" -ForegroundColor Yellow
 } else {
-    nssm install EnshroudedServer "$serverPath\enshrouded_server.exe"
+    $wrapperScript = Join-Path $PSScriptRoot "enshrouded-wrapper.bat"
+    nssm install EnshroudedServer $wrapperScript
     Write-Host "Service EnshroudedServer créé" -ForegroundColor Green
 }
 
