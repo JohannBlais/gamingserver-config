@@ -24,7 +24,7 @@ Write-Host "Timeout scripts GPO configuré à 300 secondes" -ForegroundColor Gre
 
 # Instructions manuelles
 $startupScript = Join-Path $PSScriptRoot "startup.ps1"
-$shutdownScript = Join-Path $PSScriptRoot "shutdown.ps1"
+$shutdownScript = Join-Path $PSScriptRoot "backup.ps1"
 
 Write-Host @"
 
