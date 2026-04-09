@@ -119,13 +119,17 @@ Write-Host "Fast Startup désactivé (registre + GPO)" -ForegroundColor Green
 
 Write-Host "`n=== 6. Identifiants partage réseau ===" -ForegroundColor Cyan
 
-$networkUser = Read-Host "Utilisateur du partage \\HomeServer"
-$networkPass = Read-Host "Mot de passe" -AsSecureString
-$networkPassPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($networkPass))
-cmdkey /add:HomeServer /user:$networkUser /pass:$networkPassPlain
-$networkPassPlain = $null
-
-Write-Host "Identifiants stockés dans Windows Credential Manager" -ForegroundColor Green
+$credFile = Join-Path $PSScriptRoot "network-credentials.cfg"
+if (Test-Path $credFile) {
+    Write-Host "Fichier credentials déjà présent" -ForegroundColor Yellow
+} else {
+    $networkUser = Read-Host "Utilisateur du partage \\HomeServer"
+    $networkPass = Read-Host "Mot de passe" -AsSecureString
+    $networkPassPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($networkPass))
+    Set-Content -Path $credFile -Value "username=$networkUser`npassword=$networkPassPlain"
+    $networkPassPlain = $null
+    Write-Host "Identifiants stockés dans $credFile" -ForegroundColor Green
+}
 
 # ─── 7. Enregistrement des scripts GPO (startup/shutdown) ────
 
