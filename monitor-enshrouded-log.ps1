@@ -4,7 +4,7 @@
 # pour integration Home Assistant (auto-discovery)
 # =============================================================================
 
-$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Continue"
 
 $scriptDir = $PSScriptRoot
 
@@ -336,47 +336,66 @@ function Publish-State($client, $state) {
 
 Log "=== Demarrage du moniteur Enshrouded ==="
 
-Load-MqttNet
+# --- Initialisation avec retry infini ---
+# Si MQTTnet ou le broker ne sont pas disponibles, on attend plutot que crasher.
+# Cela evite que NSSM redemarre le script en boucle.
 
-$client = Connect-Mqtt
-Publish-Discovery $client
-Publish-Mqtt $client "$topicPrefix/status" "online" $true
+$client = $null
 
-# Gestionnaire d'arret propre
-$null = Register-EngineEvent -SourceIdentifier PowerShell.Exiting -Action {
-    try {
-        Publish-Mqtt $client "$topicPrefix/status" "offline" $true
-        $client.DisconnectAsync().GetAwaiter().GetResult() | Out-Null
-    } catch {}
-}
-
-Log "Surveillance de : $logPath"
-Log "Publication MQTT toutes les ${pollInterval}s"
-
-# --- Boucle principale ---
 while ($true) {
-    try {
-        # Reconnexion MQTT si necessaire
-        if (-not $client.IsConnected) {
-            Log "MQTT deconnecte, reconnexion..."
+    # Phase 1 : Charger MQTTnet (attendre que la DLL soit presente)
+    while ($true) {
+        try {
+            Load-MqttNet
+            break
+        } catch {
+            Log "ERREUR chargement MQTTnet : $_ - nouvelle tentative dans 30s"
+            Start-Sleep -Seconds 30
+        }
+    }
+
+    # Phase 2 : Connexion MQTT (attendre que le broker soit disponible)
+    while ($null -eq $client -or -not $client.IsConnected) {
+        try {
             $client = Connect-Mqtt
             Publish-Discovery $client
             Publish-Mqtt $client "$topicPrefix/status" "online" $true
+            Log "Surveillance de : $logPath"
+            Log "Publication MQTT toutes les ${pollInterval}s"
+        } catch {
+            Log "ERREUR connexion MQTT : $_ - nouvelle tentative dans 30s"
+            $client = $null
+            Start-Sleep -Seconds 30
         }
-
-        # Lire et parser les nouvelles lignes
-        $newLines = Read-NewLogLines $state
-
-        foreach ($line in $newLines) {
-            Parse-LogLine $line $state | Out-Null
-        }
-
-        # Publier l'etat courant
-        Publish-State $client $state
-
-    } catch {
-        Log "ERREUR boucle principale : $_"
     }
 
-    Start-Sleep -Seconds $pollInterval
+    # Phase 3 : Boucle principale
+    try {
+        while ($true) {
+            # Verifier la connexion MQTT
+            if (-not $client.IsConnected) {
+                Log "MQTT deconnecte, reconnexion..."
+                break
+            }
+
+            # Lire et parser les nouvelles lignes
+            $newLines = Read-NewLogLines $state
+
+            foreach ($line in $newLines) {
+                Parse-LogLine $line $state | Out-Null
+            }
+
+            # Publier l'etat courant
+            Publish-State $client $state
+
+            Start-Sleep -Seconds $pollInterval
+        }
+    } catch {
+        Log "ERREUR boucle principale : $_ - redemarrage dans 10s"
+        Start-Sleep -Seconds 10
+    }
+
+    # Reset client pour forcer reconnexion
+    try { $client.DisconnectAsync().GetAwaiter().GetResult() | Out-Null } catch {}
+    $client = $null
 }
