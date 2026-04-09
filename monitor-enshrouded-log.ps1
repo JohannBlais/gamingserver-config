@@ -155,8 +155,9 @@ $state = @{
     TeleportCount       = 0
     LastTeleport        = ""
     MachineToPlayer     = @{}        # machine index -> player name
-    PendingMachineQueue = [System.Collections.Queue]::new()      # machine index waiting for player name
-    MachineStats        = @{}        # machine index -> @{ ping; lost; state; up; down }
+    PlayerIdToPlayer    = @{}        # player entity id -> player name
+    PendingMachineQueue = [System.Collections.Queue]::new()      # [machine, playerId] waiting for name
+    MachineStats        = @{}        # machine index -> @{ ping; lost; state }
     LastTimestamp        = ""
     FileOffset          = [long]0
     LastFileSize         = [long]0
@@ -186,8 +187,10 @@ function Parse-LogLine($line, $state) {
 
         # --- Liaison Machine -> Joueur ---
         # "Machine '1': Player '0(0)' logged in" -> file d'attente FIFO
-        if ($tag -eq "server" -and $message -match "^Machine '(\d+)': Player '.+' logged in") {
-            $state.PendingMachineQueue.Enqueue($Matches[1])
+        # Player handle '0(0)' -> entity id = 0
+        if ($tag -eq "server" -and $message -match "^Machine '(\d+)': Player '(\d+)\(\d+\)' logged in") {
+            $pending = @{ Machine = $Matches[1]; PlayerId = $Matches[2] }
+            $state.PendingMachineQueue.Enqueue($pending)
             return $false
         }
 
@@ -197,8 +200,9 @@ function Parse-LogLine($line, $state) {
             $state.Players.Add($playerName) | Out-Null
             $state.ServerStatus = "online"
             if ($state.PendingMachineQueue.Count -gt 0) {
-                $machIdx = $state.PendingMachineQueue.Dequeue()
-                $state.MachineToPlayer[$machIdx] = $playerName
+                $pending = $state.PendingMachineQueue.Dequeue()
+                $state.MachineToPlayer[$pending.Machine] = $playerName
+                $state.PlayerIdToPlayer[$pending.PlayerId] = $playerName
             }
             Log "Joueur connecte : $playerName (total: $($state.Players.Count))"
             return $true
@@ -208,13 +212,19 @@ function Parse-LogLine($line, $state) {
         if ($tag -eq "server" -and $message -match "^Remove Player '([^']+)'") {
             $playerName = $Matches[1]
             $state.Players.Remove($playerName) | Out-Null
-            # Nettoyer le mapping machine -> joueur
+            # Nettoyer les mappings machine et playerId -> joueur
             $machineToRemove = $state.MachineToPlayer.GetEnumerator() |
                 Where-Object { $_.Value -eq $playerName } |
                 Select-Object -First 1 -ExpandProperty Key
             if ($null -ne $machineToRemove) {
                 $state.MachineToPlayer.Remove($machineToRemove)
                 $state.MachineStats.Remove($machineToRemove)
+            }
+            $pidToRemove = $state.PlayerIdToPlayer.GetEnumerator() |
+                Where-Object { $_.Value -eq $playerName } |
+                Select-Object -First 1 -ExpandProperty Key
+            if ($null -ne $pidToRemove) {
+                $state.PlayerIdToPlayer.Remove($pidToRemove)
             }
             Log "Joueur deconnecte : $playerName (total: $($state.Players.Count))"
             return $true
@@ -280,13 +290,17 @@ function Parse-LogLine($line, $state) {
         }
 
         # --- Teleportation joueur (pas de tag) ---
-        if ($tag -eq "" -and $message -match 'Player EntityId \d+ teleported From \(([\d.-]+),\s*([\d.-]+),\s*([\d.-]+)\) to \(([\d.-]+),\s*([\d.-]+),\s*([\d.-]+)\)') {
+        if ($tag -eq "" -and $message -match 'Player EntityId (\d+) teleported From \(([\d.-]+),\s*([\d.-]+),\s*([\d.-]+)\) to \(([\d.-]+),\s*([\d.-]+),\s*([\d.-]+)\)') {
+            $entityId = $Matches[1]
             $state.TeleportCount++
-            $fromX = [Math]::Round([double]$Matches[1], 0)
-            $fromZ = [Math]::Round([double]$Matches[3], 0)
-            $toX = [Math]::Round([double]$Matches[4], 0)
-            $toZ = [Math]::Round([double]$Matches[6], 0)
-            $state.LastTeleport = "($fromX, $fromZ) -> ($toX, $toZ)"
+            $fromX = [Math]::Round([double]$Matches[2], 0)
+            $fromZ = [Math]::Round([double]$Matches[4], 0)
+            $toX = [Math]::Round([double]$Matches[5], 0)
+            $toZ = [Math]::Round([double]$Matches[7], 0)
+            $who = if ($state.PlayerIdToPlayer.ContainsKey($entityId)) {
+                $state.PlayerIdToPlayer[$entityId]
+            } else { "Player#$entityId" }
+            $state.LastTeleport = "$who ($fromX, $fromZ) -> ($toX, $toZ)"
             return $false
         }
 
@@ -298,6 +312,7 @@ function Parse-LogLine($line, $state) {
             $state.LastTeleport = ""
             $state.Players.Clear()
             $state.MachineToPlayer = @{}
+            $state.PlayerIdToPlayer = @{}
             $state.MachineStats = @{}
             $state.PendingMachineQueue.Clear()
             Log "Serveur Enshrouded demarre"
@@ -309,6 +324,7 @@ function Parse-LogLine($line, $state) {
             $state.ServerStatus = "offline"
             $state.Players.Clear()
             $state.MachineToPlayer = @{}
+            $state.PlayerIdToPlayer = @{}
             $state.MachineStats = @{}
             $state.PendingMachineQueue.Clear()
             Log "Serveur Enshrouded arrete"
