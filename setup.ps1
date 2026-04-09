@@ -177,7 +177,7 @@ if (Test-Path $mqttnetDll) {
     Write-Host "Telechargement de MQTTnet..."
     New-Item -ItemType Directory -Path $libDir -Force | Out-Null
     $nupkgUrl = "https://www.nuget.org/api/v2/package/MQTTnet/4.3.7.1207"
-    $nupkgPath = "$env:TEMP\mqttnet.nupkg"
+    $nupkgPath = "$env:TEMP\mqttnet.zip"
     Invoke-WebRequest -Uri $nupkgUrl -OutFile $nupkgPath
     $extractPath = "$env:TEMP\mqttnet_extract"
     Expand-Archive -Path $nupkgPath -DestinationPath $extractPath -Force
