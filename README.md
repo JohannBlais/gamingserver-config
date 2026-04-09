@@ -53,7 +53,7 @@ Ce script configure automatiquement :
 |--------|-------------|
 | `init.ps1` | Bootstrap : installe Git et clone le repo |
 | `setup.ps1` | Provisionnement complet de la machine |
-| `backup.ps1` | Sauvegarde des saves et config vers `\\HomeServer\Backup\Enshrouded Server` |
+| `shutdown.ps1` | Sauvegarde des saves et config vers `\\HomeServer\Backup\Enshrouded Server` |
 
 ## Structure
 
@@ -61,7 +61,7 @@ Ce script configure automatiquement :
 gamingserver-config/
   init.ps1                  # Bootstrap
   setup.ps1                 # Setup complet
-  backup.ps1                # Backup (déclenché au shutdown)
+  shutdown.ps1                # Backup (déclenché au shutdown)
   HASS.Agent/config/        # Configs HASS.Agent Satellite Service
     commands.json            # Commandes MQTT (start/stop/shutdown)
     sensors.json             # Sensors MQTT (CPU, RAM, service state, storage)

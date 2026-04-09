@@ -123,9 +123,9 @@ Write-Host "Identifiants stockés dans Windows Credential Manager" -ForegroundCo
 Write-Host "`n=== 7. Configuration backup à l'arrêt ===" -ForegroundColor Cyan
 
 # Référencer le script de backup depuis le repo local
-$backupScript = Join-Path $PSScriptRoot "backup.ps1"
+$backupScript = Join-Path $PSScriptRoot "shutdown.ps1"
 if (-not (Test-Path $backupScript)) {
-    Write-Host "ATTENTION : backup.ps1 introuvable dans le repo" -ForegroundColor Red
+    Write-Host "ATTENTION : shutdown.ps1 introuvable dans le repo" -ForegroundColor Red
 }
 
 # Configurer le timeout des scripts GPO à 300 secondes
