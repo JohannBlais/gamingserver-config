@@ -112,6 +112,8 @@ function Publish-Discovery($client) {
         @{ id = "base_count";         name = "Base Count";         icon = "mdi:home-group" }
         @{ id = "memory_usage";       name = "Memory Usage";       icon = "mdi:memory";          unit = "%" }
         @{ id = "error_count";        name = "Error Count";        icon = "mdi:alert-circle" }
+        @{ id = "teleport_count";     name = "Teleport Count";     icon = "mdi:map-marker-path" }
+        @{ id = "last_teleport";      name = "Last Teleport";      icon = "mdi:map-marker-radius" }
         @{ id = "uptime";             name = "Uptime";             icon = "mdi:clock-outline" }
     )
 
@@ -149,6 +151,8 @@ $state = @{
     BaseCount     = 0
     MemoryUsage   = 0.0
     ErrorCount    = 0
+    TeleportCount = 0
+    LastTeleport  = ""
     LastTimestamp  = ""
     FileOffset    = [long]0
     LastFileSize  = [long]0
@@ -233,10 +237,23 @@ function Parse-LogLine($line, $state) {
             return $false
         }
 
+        # --- Teleportation joueur (pas de tag) ---
+        if ($tag -eq "" -and $message -match 'Player EntityId \d+ teleported From \(([\d.-]+),\s*([\d.-]+),\s*([\d.-]+)\) to \(([\d.-]+),\s*([\d.-]+),\s*([\d.-]+)\)') {
+            $state.TeleportCount++
+            $fromX = [Math]::Round([double]$Matches[1], 0)
+            $fromZ = [Math]::Round([double]$Matches[3], 0)
+            $toX = [Math]::Round([double]$Matches[4], 0)
+            $toZ = [Math]::Round([double]$Matches[6], 0)
+            $state.LastTeleport = "($fromX, $fromZ) -> ($toX, $toZ)"
+            return $false
+        }
+
         # --- Demarrage serveur ---
         if ($tag -eq "online" -and $message -match 'Server connected to Steam successfully') {
             $state.ServerStatus = "online"
             $state.ErrorCount = 0
+            $state.TeleportCount = 0
+            $state.LastTeleport = ""
             $state.Players.Clear()
             Log "Serveur Enshrouded demarre"
             return $true
@@ -323,6 +340,8 @@ function Publish-State($client, $state) {
     Publish-Mqtt $client "$topicPrefix/base_count"          $state.BaseCount         $true
     Publish-Mqtt $client "$topicPrefix/memory_usage"        $state.MemoryUsage       $true
     Publish-Mqtt $client "$topicPrefix/error_count"         $state.ErrorCount        $true
+    Publish-Mqtt $client "$topicPrefix/teleport_count"      $state.TeleportCount     $true
+    Publish-Mqtt $client "$topicPrefix/last_teleport"       $state.LastTeleport      $true
     Publish-Mqtt $client "$topicPrefix/uptime"              $uptime                  $true
 }
 
