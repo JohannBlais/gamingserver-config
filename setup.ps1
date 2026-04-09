@@ -18,6 +18,8 @@
 
 $ErrorActionPreference = "Stop"
 
+$scriptDir = $PSScriptRoot
+
 $steamCmdPath = "C:\SteamCMD"
 $serverPath = "C:\SteamApps\EnshroudedServer"
 $enshroudedAppId = 2278520
@@ -97,7 +99,7 @@ nssm set EnshroudedServer Start SERVICE_AUTO_START
 nssm set EnshroudedServer AppExit Default Exit
 nssm set EnshroudedServer AppStopMethodConsole 30000
 nssm set EnshroudedServer AppStopMethodWindow 30000
-$backupBat = Join-Path $PSScriptRoot "run-backup.bat"
+$backupBat = Join-Path $scriptDir "run-backup.bat"
 nssm set EnshroudedServer AppEvents Exit/Post $backupBat
 
 Write-Host "Service configure (auto-start, arret propre 30s, backup post-arret)" -ForegroundColor Green
@@ -119,7 +121,7 @@ Write-Host "Fast Startup desactive (registre + GPO)" -ForegroundColor Green
 
 Write-Host "`n=== 6. Identifiants partage reseau ===" -ForegroundColor Cyan
 
-$credFile = Join-Path $PSScriptRoot "network-credentials.cfg"
+$credFile = Join-Path $scriptDir "network-credentials.cfg"
 if (Test-Path $credFile) {
     Write-Host "Fichier credentials deja present" -ForegroundColor Yellow
 } else {
@@ -133,7 +135,7 @@ if (Test-Path $credFile) {
 
 # --- 7. Enregistrement des scripts GPO (startup/shutdown) ----
 
-& (Join-Path $PSScriptRoot "register-gpo-scripts.ps1")
+& (Join-Path $scriptDir "register-gpo-scripts.ps1")
 
 # --- 8. HASS.Agent Satellite Service -------------------------
 
@@ -143,7 +145,7 @@ $hassAgentConfigDest = "C:\Program Files (x86)\LAB02 Research\HASS.Agent Satelli
 
 if (Test-Path $hassAgentConfigDest) {
     # Copier toutes les configs
-    $configSource = Join-Path $PSScriptRoot "HASS.Agent\config"
+    $configSource = Join-Path $scriptDir "HASS.Agent\config"
     Copy-Item -Path "$configSource\*" -Destination $hassAgentConfigDest -Force
     Write-Host "Configs HASS.Agent copiees" -ForegroundColor Green
 
@@ -168,7 +170,7 @@ if (Test-Path $hassAgentConfigDest) {
 
 Write-Host "`n=== 9. MQTTnet Library ===" -ForegroundColor Cyan
 
-$libDir = Join-Path $PSScriptRoot "lib"
+$libDir = Join-Path $scriptDir "lib"
 $mqttnetDll = Join-Path $libDir "MQTTnet.dll"
 
 if (Test-Path $mqttnetDll) {
@@ -201,8 +203,8 @@ if ($monitorServiceExists -match "SERVICE_") {
     Write-Host "Service EnshroudedMonitor cree" -ForegroundColor Green
 }
 
-$monitorScript = Join-Path $PSScriptRoot "monitor-enshrouded-log.ps1"
-nssm set EnshroudedMonitor AppDirectory $PSScriptRoot
+$monitorScript = Join-Path $scriptDir "monitor-enshrouded-log.ps1"
+nssm set EnshroudedMonitor AppDirectory $scriptDir
 nssm set EnshroudedMonitor AppParameters "-ExecutionPolicy Bypass -File `"$monitorScript`""
 nssm set EnshroudedMonitor DisplayName "Enshrouded Log Monitor"
 nssm set EnshroudedMonitor Description "Monitore les logs Enshrouded et publie sur MQTT"

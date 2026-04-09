@@ -6,12 +6,14 @@
 
 $ErrorActionPreference = "Stop"
 
+$scriptDir = $PSScriptRoot
+
 # --- Configuration ---
 $serverPath      = "C:\SteamApps\EnshroudedServer"
 $logPath         = "$serverPath\logs\enshrouded_server.log"
 $monitorLogFile  = "C:\source\gamingserver-config\monitor.log"
 $mqttConfigPath  = "C:\Program Files (x86)\LAB02 Research\HASS.Agent Satellite Service\config\servicemqttsettings.json"
-$mqttnetDllPath  = Join-Path $PSScriptRoot "lib\MQTTnet.dll"
+$mqttnetDllPath  = Join-Path $scriptDir "lib\MQTTnet.dll"
 $pollInterval    = 5
 $topicPrefix     = "enshrouded"
 

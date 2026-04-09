@@ -13,6 +13,8 @@
 
 $ErrorActionPreference = "Stop"
 
+$scriptDir = $PSScriptRoot
+
 Write-Host "`n=== Configuration du script GPO ===" -ForegroundColor Cyan
 
 # Configurer le timeout des scripts GPO a 300 secondes
@@ -23,7 +25,7 @@ Set-ItemProperty -Path $gpoScriptsPath -Name "MaxGPOScriptWait" -Value 300
 Write-Host "Timeout scripts GPO configure a 300 secondes" -ForegroundColor Green
 
 # Instructions manuelles
-$startupScript = Join-Path $PSScriptRoot "startup.ps1"
+$startupScript = Join-Path $scriptDir "startup.ps1"
 
 Write-Host @"
 
