@@ -10,7 +10,7 @@
 
 $ErrorActionPreference = "Stop"
 $repoUrl = "https://github.com/JohannBlais/gamingserver-config.git"
-$repoPath = "C:\SteamApps\gamingserver-config"
+$repoPath = "C:\source\gamingserver-config"
 
 # ─── 1. Installation Git ─────────────────────────────────────
 
