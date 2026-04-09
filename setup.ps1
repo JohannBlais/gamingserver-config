@@ -22,6 +22,13 @@ $steamCmdPath = "C:\SteamCMD"
 $serverPath = "C:\SteamApps\EnshroudedServer"
 $enshroudedAppId = 2278520
 
+# ─── 0. Politique d'exécution PowerShell ─────────────────────
+
+Write-Host "`n=== 0. Politique d'exécution PowerShell ===" -ForegroundColor Cyan
+
+Set-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force
+Write-Host "Politique d'exécution définie sur RemoteSigned" -ForegroundColor Green
+
 # ─── 1. Installation SteamCMD ────────────────────────────────
 
 Write-Host "`n=== 1. Installation SteamCMD ===" -ForegroundColor Cyan
