@@ -1,5 +1,5 @@
 # Backup Enshrouded Server - saves + config
-# Déclenché par NSSM AppEvents Exit/Post via run-backup.bat
+# Declenche par NSSM AppEvents Exit/Post via run-backup.bat
 
 $serverPath = "C:\SteamApps\EnshroudedServer"
 $backupDest = "\\HomeServer\Backup\Enshrouded Server"
@@ -15,7 +15,7 @@ function Log($msg) {
     Add-Content -Path $logFile -Value $line
 }
 
-Log "=== Début du backup ==="
+Log "=== Debut du backup ==="
 
 $filesToBackup = @(
     "$serverPath\savegame",
@@ -25,25 +25,25 @@ $filesToBackup = @(
 try {
     Log "Compression des fichiers..."
     Compress-Archive -Path $filesToBackup -DestinationPath $zipPath -Force
-    Log "Zip créé : $zipPath"
+    Log "Zip cree : $zipPath"
 
     Log "Copie vers $backupDest..."
     Copy-Item -Path $zipPath -Destination "$backupDest\$zipName" -Force
-    Log "Backup copié : $zipName"
+    Log "Backup copie : $zipName"
 
     Log "Nettoyage du zip temporaire..."
     Remove-Item -Path $zipPath -Force
 
-    Log "Application de la rétention ($retention backups max)..."
+    Log "Application de la retention ($retention backups max)..."
     $removed = Get-ChildItem -Path $backupDest -Filter "enshrouded_backup_*.zip" |
         Sort-Object LastWriteTime -Descending |
         Select-Object -Skip $retention
     if ($removed) {
         $removed | Remove-Item -Force
-        Log "Supprimé : $($removed.Count) ancien(s) backup(s)"
+        Log "Supprime : $($removed.Count) ancien(s) backup(s)"
     }
 
-    Log "=== Backup terminé avec succès ==="
+    Log "=== Backup termine avec succes ==="
 } catch {
     Log "ERREUR : $_"
 }

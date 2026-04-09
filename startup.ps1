@@ -1,7 +1,7 @@
-# ═══════════════════════════════════════════════════════════════
-# Startup — Met à jour le repo gamingserver-config au démarrage
-# ═══════════════════════════════════════════════════════════════
-# Configuré comme script de démarrage GPO par setup.ps1
+# =================================================================
+# Startup - Met a jour le repo gamingserver-config au demarrage
+# =================================================================
+# Configure comme script de demarrage GPO par setup.ps1
 
 $repoPath = "C:\source\gamingserver-config"
 
@@ -9,7 +9,7 @@ if (Test-Path "$repoPath\.git") {
     git -C $repoPath pull --ff-only
 }
 
-# Monter le partage réseau pour le backup
+# Monter le partage reseau pour le backup
 $credFile = "$repoPath\network-credentials.cfg"
 if (Test-Path $credFile) {
     $creds = Get-Content $credFile | ConvertFrom-StringData

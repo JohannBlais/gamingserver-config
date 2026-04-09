@@ -1,13 +1,13 @@
-# ═══════════════════════════════════════════════════════════════
-# Enregistre le script GPO de démarrage
-# ═══════════════════════════════════════════════════════════════
-# L'enregistrement GPO local ne peut pas être automatisé de
-# manière fiable. Ce script configure le timeout et affiche
+# =================================================================
+# Enregistre le script GPO de demarrage
+# =================================================================
+# L'enregistrement GPO local ne peut pas etre automatise de
+# maniere fiable. Ce script configure le timeout et affiche
 # les instructions pour l'enregistrement manuel via gpedit.
 #
 # Usage :
 #   .\register-gpo-scripts.ps1
-# ═══════════════════════════════════════════════════════════════
+# =================================================================
 
 #Requires -RunAsAdministrator
 
@@ -15,12 +15,12 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "`n=== Configuration du script GPO ===" -ForegroundColor Cyan
 
-# Configurer le timeout des scripts GPO à 300 secondes
+# Configurer le timeout des scripts GPO a 300 secondes
 $gpoScriptsPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
 New-Item -Path $gpoScriptsPath -Force | Out-Null
 Set-ItemProperty -Path $gpoScriptsPath -Name "MaxGPOScriptWait" -Value 300
 
-Write-Host "Timeout scripts GPO configuré à 300 secondes" -ForegroundColor Green
+Write-Host "Timeout scripts GPO configure a 300 secondes" -ForegroundColor Green
 
 # Instructions manuelles
 $startupScript = Join-Path $PSScriptRoot "startup.ps1"
