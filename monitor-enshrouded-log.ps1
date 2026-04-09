@@ -52,7 +52,7 @@ function Get-MqttConfig {
 function Connect-Mqtt {
     $config = Get-MqttConfig
 
-    $factory = [MQTTnet.MqttClientFactory]::new()
+    $factory = [MQTTnet.MqttFactory]::new()
     $client = $factory.CreateMqttClient()
 
     $lwtMessage = [MQTTnet.MqttApplicationMessageBuilder]::new()
