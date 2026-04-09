@@ -155,7 +155,7 @@ $state = @{
     TeleportCount       = 0
     LastTeleport        = ""
     MachineToPlayer     = @{}        # machine index -> player name
-    PendingMachineIndex = $null      # machine index waiting for player name
+    PendingMachineQueue = [System.Collections.Queue]::new()      # machine index waiting for player name
     MachineStats        = @{}        # machine index -> @{ ping; lost; state; up; down }
     LastTimestamp        = ""
     FileOffset          = [long]0
@@ -185,20 +185,20 @@ function Parse-LogLine($line, $state) {
         }
 
         # --- Liaison Machine -> Joueur ---
-        # "Machine '1': Player '0(0)' logged in" -> stocker machine en attente de nom
+        # "Machine '1': Player '0(0)' logged in" -> file d'attente FIFO
         if ($tag -eq "server" -and $message -match "^Machine '(\d+)': Player '.+' logged in") {
-            $state.PendingMachineIndex = $Matches[1]
+            $state.PendingMachineQueue.Enqueue($Matches[1])
             return $false
         }
 
-        # "Player 'SaumonAgile' logged in with Permissions:" -> lier au nom
+        # "Player 'SaumonAgile' logged in with Permissions:" -> lier au premier en attente
         if ($tag -eq "server" -and $message -match "^Player '([^']+)' logged in") {
             $playerName = $Matches[1]
             $state.Players.Add($playerName) | Out-Null
             $state.ServerStatus = "online"
-            if ($null -ne $state.PendingMachineIndex) {
-                $state.MachineToPlayer[$state.PendingMachineIndex] = $playerName
-                $state.PendingMachineIndex = $null
+            if ($state.PendingMachineQueue.Count -gt 0) {
+                $machIdx = $state.PendingMachineQueue.Dequeue()
+                $state.MachineToPlayer[$machIdx] = $playerName
             }
             Log "Joueur connecte : $playerName (total: $($state.Players.Count))"
             return $true
@@ -299,7 +299,7 @@ function Parse-LogLine($line, $state) {
             $state.Players.Clear()
             $state.MachineToPlayer = @{}
             $state.MachineStats = @{}
-            $state.PendingMachineIndex = $null
+            $state.PendingMachineQueue.Clear()
             Log "Serveur Enshrouded demarre"
             return $true
         }
@@ -310,7 +310,7 @@ function Parse-LogLine($line, $state) {
             $state.Players.Clear()
             $state.MachineToPlayer = @{}
             $state.MachineStats = @{}
-            $state.PendingMachineIndex = $null
+            $state.PendingMachineQueue.Clear()
             Log "Serveur Enshrouded arrete"
             return $true
         }
