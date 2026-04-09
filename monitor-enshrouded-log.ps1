@@ -114,6 +114,7 @@ function Publish-Discovery($client) {
         @{ id = "error_count";        name = "Error Count";        icon = "mdi:alert-circle" }
         @{ id = "teleport_count";     name = "Teleport Count";     icon = "mdi:map-marker-path" }
         @{ id = "last_teleport";      name = "Last Teleport";      icon = "mdi:map-marker-radius" }
+        @{ id = "player_network";      name = "Player Network";      icon = "mdi:lan" }
         @{ id = "uptime";             name = "Uptime";             icon = "mdi:clock-outline" }
     )
 
@@ -151,11 +152,14 @@ $state = @{
     BaseCount     = 0
     MemoryUsage   = 0.0
     ErrorCount    = 0
-    TeleportCount = 0
-    LastTeleport  = ""
-    LastTimestamp  = ""
-    FileOffset    = [long]0
-    LastFileSize  = [long]0
+    TeleportCount       = 0
+    LastTeleport        = ""
+    MachineToPlayer     = @{}        # machine index -> player name
+    PendingMachineIndex = $null      # machine index waiting for player name
+    MachineStats        = @{}        # machine index -> @{ ping; lost; state; up; down }
+    LastTimestamp        = ""
+    FileOffset          = [long]0
+    LastFileSize         = [long]0
 }
 
 # --- Parseur de lignes de log ---
@@ -180,20 +184,58 @@ function Parse-LogLine($line, $state) {
             $message = $Matches[2]
         }
 
-        # --- Evenements joueur ---
+        # --- Liaison Machine -> Joueur ---
+        # "Machine '1': Player '0(0)' logged in" -> stocker machine en attente de nom
+        if ($tag -eq "server" -and $message -match "^Machine '(\d+)': Player '.+' logged in") {
+            $state.PendingMachineIndex = $Matches[1]
+            return $false
+        }
+
+        # "Player 'SaumonAgile' logged in with Permissions:" -> lier au nom
         if ($tag -eq "server" -and $message -match "^Player '([^']+)' logged in") {
             $playerName = $Matches[1]
             $state.Players.Add($playerName) | Out-Null
             $state.ServerStatus = "online"
+            if ($null -ne $state.PendingMachineIndex) {
+                $state.MachineToPlayer[$state.PendingMachineIndex] = $playerName
+                $state.PendingMachineIndex = $null
+            }
             Log "Joueur connecte : $playerName (total: $($state.Players.Count))"
             return $true
         }
 
+        # --- Deconnexion joueur ---
         if ($tag -eq "server" -and $message -match "^Remove Player '([^']+)'") {
             $playerName = $Matches[1]
             $state.Players.Remove($playerName) | Out-Null
+            # Nettoyer le mapping machine -> joueur
+            $machineToRemove = $state.MachineToPlayer.GetEnumerator() |
+                Where-Object { $_.Value -eq $playerName } |
+                Select-Object -First 1 -ExpandProperty Key
+            if ($null -ne $machineToRemove) {
+                $state.MachineToPlayer.Remove($machineToRemove)
+                $state.MachineStats.Remove($machineToRemove)
+            }
             Log "Joueur deconnecte : $playerName (total: $($state.Players.Count))"
             return $true
+        }
+
+        # --- Session telemetry (m#N) ---
+        # "  m#1(129): up 256 (270), down 23 (25), remote 255 (269), limit 1081, lost 11, ping 31 ms, OperatingNormally"
+        if ($tag -eq "" -and $message -match '^\s*m#(\d+)\(\d+\):.*lost (\d+),\s*ping (\d+) ms,\s*(\S+)') {
+            $machIdx = $Matches[1]
+            $lost = [int]$Matches[2]
+            $ping = [int]$Matches[3]
+            $netState = $Matches[4]
+            # Ignorer la machine locale (m#0)
+            if ($machIdx -ne "0") {
+                $state.MachineStats[$machIdx] = @{
+                    ping  = $ping
+                    lost  = $lost
+                    state = $netState
+                }
+            }
+            return $false
         }
 
         # --- Performance ECSS ---
@@ -255,6 +297,9 @@ function Parse-LogLine($line, $state) {
             $state.TeleportCount = 0
             $state.LastTeleport = ""
             $state.Players.Clear()
+            $state.MachineToPlayer = @{}
+            $state.MachineStats = @{}
+            $state.PendingMachineIndex = $null
             Log "Serveur Enshrouded demarre"
             return $true
         }
@@ -263,6 +308,9 @@ function Parse-LogLine($line, $state) {
         if ($tag -eq "app" -and $message -match 'Trigger gameflow shutdown') {
             $state.ServerStatus = "offline"
             $state.Players.Clear()
+            $state.MachineToPlayer = @{}
+            $state.MachineStats = @{}
+            $state.PendingMachineIndex = $null
             Log "Serveur Enshrouded arrete"
             return $true
         }
@@ -342,6 +390,25 @@ function Publish-State($client, $state) {
     Publish-Mqtt $client "$topicPrefix/error_count"         $state.ErrorCount        $true
     Publish-Mqtt $client "$topicPrefix/teleport_count"      $state.TeleportCount     $true
     Publish-Mqtt $client "$topicPrefix/last_teleport"       $state.LastTeleport      $true
+
+    # Construire le JSON player_network avec stats par joueur
+    $playerNetworkData = @{}
+    foreach ($machIdx in $state.MachineToPlayer.Keys) {
+        $playerName = $state.MachineToPlayer[$machIdx]
+        if ($state.MachineStats.ContainsKey($machIdx)) {
+            $stats = $state.MachineStats[$machIdx]
+            $playerNetworkData[$playerName] = @{
+                ping  = $stats.ping
+                lost  = $stats.lost
+                state = $stats.state
+            }
+        }
+    }
+    $networkJson = if ($playerNetworkData.Count -gt 0) {
+        $playerNetworkData | ConvertTo-Json -Depth 3 -Compress
+    } else { "{}" }
+    Publish-Mqtt $client "$topicPrefix/player_network"      $networkJson             $true
+
     Publish-Mqtt $client "$topicPrefix/uptime"              $uptime                  $true
 }
 
