@@ -118,43 +118,9 @@ $networkPassPlain = $null
 
 Write-Host "Identifiants stockés dans Windows Credential Manager" -ForegroundColor Green
 
-# ─── 7. Configuration backup à l'arrêt ──────────────────────
+# ─── 7. Enregistrement des scripts GPO (startup/shutdown) ────
 
-Write-Host "`n=== 7. Configuration backup à l'arrêt ===" -ForegroundColor Cyan
-
-# Référencer le script de backup depuis le repo local
-$backupScript = Join-Path $PSScriptRoot "shutdown.ps1"
-if (-not (Test-Path $backupScript)) {
-    Write-Host "ATTENTION : shutdown.ps1 introuvable dans le repo" -ForegroundColor Red
-}
-
-# Configurer le timeout des scripts GPO à 300 secondes
-$gpoScriptsPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
-New-Item -Path $gpoScriptsPath -Force | Out-Null
-Set-ItemProperty -Path $gpoScriptsPath -Name "MaxGPOScriptWait" -Value 300
-
-Write-Host "Timeout scripts GPO configuré à 300 secondes" -ForegroundColor Green
-
-# Enregistrer le script de backup comme script d'arrêt GPO
-$gpoShutdownPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Shutdown\0\0"
-New-Item -Path $gpoShutdownPath -Force | Out-Null
-Set-ItemProperty -Path $gpoShutdownPath -Name "Script" -Value $backupScript
-Set-ItemProperty -Path $gpoShutdownPath -Name "Parameters" -Value ""
-Set-ItemProperty -Path $gpoShutdownPath -Name "IsPowershell" -Value 1
-Set-ItemProperty -Path $gpoShutdownPath -Name "ExecTime" -Value 0
-
-Write-Host "Script de backup enregistré comme script d'arrêt GPO" -ForegroundColor Green
-
-# Enregistrer le script de startup comme script de démarrage GPO
-$startupScript = Join-Path $PSScriptRoot "startup.ps1"
-$gpoStartupPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0"
-New-Item -Path $gpoStartupPath -Force | Out-Null
-Set-ItemProperty -Path $gpoStartupPath -Name "Script" -Value $startupScript
-Set-ItemProperty -Path $gpoStartupPath -Name "Parameters" -Value ""
-Set-ItemProperty -Path $gpoStartupPath -Name "IsPowershell" -Value 1
-Set-ItemProperty -Path $gpoStartupPath -Name "ExecTime" -Value 0
-
-Write-Host "Script de startup enregistré comme script de démarrage GPO" -ForegroundColor Green
+& (Join-Path $PSScriptRoot "register-gpo-scripts.ps1")
 
 # ─── 8. HASS.Agent Satellite Service ─────────────────────────
 
