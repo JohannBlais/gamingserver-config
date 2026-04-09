@@ -106,9 +106,21 @@ Set-ItemProperty -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\System" -Name 
 
 Write-Host "Fast Startup désactivé (registre + GPO)" -ForegroundColor Green
 
-# ─── 6. Configuration backup à l'arrêt ──────────────────────
+# ─── 6. Identifiants partage réseau (backup) ────────────────
 
-Write-Host "`n=== 6. Configuration backup à l'arrêt ===" -ForegroundColor Cyan
+Write-Host "`n=== 6. Identifiants partage réseau ===" -ForegroundColor Cyan
+
+$networkUser = Read-Host "Utilisateur du partage \\HomeServer"
+$networkPass = Read-Host "Mot de passe" -AsSecureString
+$networkPassPlain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($networkPass))
+cmdkey /add:HomeServer /user:$networkUser /pass:$networkPassPlain
+$networkPassPlain = $null
+
+Write-Host "Identifiants stockés dans Windows Credential Manager" -ForegroundColor Green
+
+# ─── 7. Configuration backup à l'arrêt ──────────────────────
+
+Write-Host "`n=== 7. Configuration backup à l'arrêt ===" -ForegroundColor Cyan
 
 # Copier le script de backup
 $backupScript = Join-Path $PSScriptRoot "backup.ps1"
@@ -137,9 +149,9 @@ Set-ItemProperty -Path $gpoShutdownPath -Name "ExecTime" -Value 0
 
 Write-Host "Script de backup enregistré comme script d'arrêt GPO" -ForegroundColor Green
 
-# ─── 7. HASS.Agent Satellite Service ─────────────────────────
+# ─── 8. HASS.Agent Satellite Service ─────────────────────────
 
-Write-Host "`n=== 7. HASS.Agent Satellite Service ===" -ForegroundColor Cyan
+Write-Host "`n=== 8. HASS.Agent Satellite Service ===" -ForegroundColor Cyan
 
 $hassAgentConfigDest = "C:\Program Files (x86)\LAB02 Research\HASS.Agent Satellite Service\config"
 
@@ -166,9 +178,9 @@ if (Test-Path $hassAgentConfigDest) {
 "@ -ForegroundColor Yellow
 }
 
-# ─── 8. Démarrage du service ─────────────────────────────────
+# ─── 9. Démarrage du service ─────────────────────────────────
 
-Write-Host "`n=== 8. Démarrage du serveur ===" -ForegroundColor Cyan
+Write-Host "`n=== 9. Démarrage du serveur ===" -ForegroundColor Cyan
 
 $startNow = Read-Host "Démarrer le serveur Enshrouded maintenant ? (O/N)"
 if ($startNow -eq "O" -or $startNow -eq "o") {
