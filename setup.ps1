@@ -86,8 +86,7 @@ $serviceExists = nssm status EnshroudedServer 2>&1
 if ($serviceExists -match "SERVICE_") {
     Write-Host "Le service EnshroudedServer existe déjà" -ForegroundColor Yellow
 } else {
-    $wrapperScript = Join-Path $PSScriptRoot "enshrouded-wrapper.bat"
-    nssm install EnshroudedServer $wrapperScript
+    nssm install EnshroudedServer "$serverPath\enshrouded_server.exe"
     Write-Host "Service EnshroudedServer créé" -ForegroundColor Green
 }
 
@@ -98,8 +97,10 @@ nssm set EnshroudedServer Start SERVICE_AUTO_START
 nssm set EnshroudedServer AppRestartDelay 10000
 nssm set EnshroudedServer AppStopMethodConsole 30000
 nssm set EnshroudedServer AppStopMethodWindow 30000
+$backupBat = Join-Path $PSScriptRoot "run-backup.bat"
+nssm set EnshroudedServer AppEvents Exit/Post $backupBat
 
-Write-Host "Service configuré (auto-start, arrêt propre 30s)" -ForegroundColor Green
+Write-Host "Service configuré (auto-start, arrêt propre 30s, backup post-arrêt)" -ForegroundColor Green
 
 # ─── 5. Désactivation Fast Startup (GPO) ─────────────────────
 
