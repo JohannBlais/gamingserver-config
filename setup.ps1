@@ -145,6 +145,17 @@ Set-ItemProperty -Path $gpoShutdownPath -Name "ExecTime" -Value 0
 
 Write-Host "Script de backup enregistré comme script d'arrêt GPO" -ForegroundColor Green
 
+# Enregistrer le script de startup comme script de démarrage GPO
+$startupScript = Join-Path $PSScriptRoot "startup.ps1"
+$gpoStartupPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Startup\0\0"
+New-Item -Path $gpoStartupPath -Force | Out-Null
+Set-ItemProperty -Path $gpoStartupPath -Name "Script" -Value $startupScript
+Set-ItemProperty -Path $gpoStartupPath -Name "Parameters" -Value ""
+Set-ItemProperty -Path $gpoStartupPath -Name "IsPowershell" -Value 1
+Set-ItemProperty -Path $gpoStartupPath -Name "ExecTime" -Value 0
+
+Write-Host "Script de startup enregistré comme script de démarrage GPO" -ForegroundColor Green
+
 # ─── 8. HASS.Agent Satellite Service ─────────────────────────
 
 Write-Host "`n=== 8. HASS.Agent Satellite Service ===" -ForegroundColor Cyan
