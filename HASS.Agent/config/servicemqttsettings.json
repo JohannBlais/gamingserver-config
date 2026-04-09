@@ -1,0 +1,13 @@
+{
+  "MqttAddress": "homeassistant.local",
+  "MqttPort": 1883,
+  "MqttUseTls": false,
+  "MqttAllowUntrustedCertificates": true,
+  "MqttUsername": "<MQTT_USERNAME>",
+  "MqttPassword": "<MQTT_PASSWORD>",
+  "MqttDiscoveryPrefix": "homeassistant",
+  "MqttClientId": "d6ab2478",
+  "MqttUseRetainFlag": true,
+  "MqttRootCertificate": "",
+  "MqttClientCertificate": ""
+}

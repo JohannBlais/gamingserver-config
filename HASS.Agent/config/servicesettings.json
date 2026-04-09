@@ -1,0 +1,7 @@
+{
+  "AuthId": "<HA_LONG_LIVED_TOKEN>",
+  "DeviceName": "GAMING-SERVER",
+  "CustomExecutorName": "",
+  "CustomExecutorBinary": "",
+  "DisconnectedGracePeriodSeconds": 60
+}

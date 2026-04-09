@@ -1,0 +1,32 @@
+[
+  {
+    "Id": "a8e4c913-98a6-4cd5-a233-6296b5734931",
+    "Name": "GAMING-SERVER_shutdown",
+    "Type": "ShutdownCommand",
+    "EntityType": "button",
+    "Command": "shutdown /s",
+    "KeyCode": 0,
+    "RunAsLowIntegrity": false,
+    "Keys": []
+  },
+  {
+    "Id": "a0acec03-dc8b-41ed-970d-211ace14eccd",
+    "Name": "GAMING-SERVER_StartEnshrouded",
+    "Type": "PowershellCommand",
+    "EntityType": "button",
+    "Command": "net start EnshroudedServer",
+    "KeyCode": 0,
+    "RunAsLowIntegrity": false,
+    "Keys": []
+  },
+  {
+    "Id": "9a1c6a23-3970-48e2-a343-455cbac183e9",
+    "Name": "GAMING-SERVER_StopEnshrouded",
+    "Type": "PowershellCommand",
+    "EntityType": "button",
+    "Command": "net stop EnshroudedServer",
+    "KeyCode": 0,
+    "RunAsLowIntegrity": false,
+    "Keys": []
+  }
+]

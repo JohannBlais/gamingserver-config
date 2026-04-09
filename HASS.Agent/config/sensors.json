@@ -1,0 +1,50 @@
+[
+  {
+    "Type": "CpuLoadSensor",
+    "Id": "3da5b422-7912-4d79-81e6-a037380c27d4",
+    "UpdateInterval": 30,
+    "Query": "",
+    "Scope": null,
+    "WindowName": "",
+    "Category": "Processor",
+    "Counter": "% Processor Time",
+    "Instance": "_Total",
+    "Name": "GAMING-SERVER-cpuload"
+  },
+  {
+    "Type": "MemoryUsageSensor",
+    "Id": "f2cdc1fa-dcc3-40ea-82b7-d4aed353ec94",
+    "UpdateInterval": 30,
+    "Query": "SELECT FreePhysicalMemory,TotalVisibleMemorySize FROM Win32_OperatingSystem",
+    "Scope": "",
+    "WindowName": "",
+    "Category": "",
+    "Counter": "",
+    "Instance": "",
+    "Name": "GAMING-SERVER-memoryusage"
+  },
+  {
+    "Type": "ServiceStateSensor",
+    "Id": "e6e8aa52-eddc-490b-9300-443ad58dc0e1",
+    "UpdateInterval": 10,
+    "Query": "EnshroudedServer",
+    "Scope": null,
+    "WindowName": "",
+    "Category": "",
+    "Counter": "",
+    "Instance": "",
+    "Name": "GAMING-SERVER-servicestate"
+  },
+  {
+    "Type": "StorageSensors",
+    "Id": "5a84c93b-4fab-48db-8679-6a32357ed4d1",
+    "UpdateInterval": 30,
+    "Query": "",
+    "Scope": null,
+    "WindowName": "",
+    "Category": "",
+    "Counter": "",
+    "Instance": "",
+    "Name": "GAMING-SERVER-storage"
+  }
+]
