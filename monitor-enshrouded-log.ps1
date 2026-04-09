@@ -141,6 +141,37 @@ function Publish-Discovery($client) {
     Log "Discovery HA publie pour $($sensors.Count) sensors"
 }
 
+# --- Discovery dynamique pour un joueur (teleportation tracker) ---
+function Publish-PlayerDiscovery($client, $playerName) {
+    $config = Get-MqttConfig
+    $prefix = $config.DiscoveryPrefix
+    $safeName = $playerName -replace '[^a-zA-Z0-9_]', '_'
+
+    $device = @{
+        identifiers  = @("enshrouded_server")
+        name         = "Enshrouded Server"
+        manufacturer = "Keen Games"
+        model        = "Dedicated Server"
+    }
+
+    $discoveryPayload = @{
+        name               = "Teleport $playerName"
+        unique_id          = "enshrouded_teleport_$safeName"
+        state_topic        = "$topicPrefix/teleport/$safeName"
+        json_attributes_topic = "$topicPrefix/teleport/$safeName"
+        device             = $device
+        availability_topic = "$topicPrefix/status"
+        payload_available     = "online"
+        payload_not_available = "offline"
+        icon               = "mdi:map-marker-account"
+    }
+
+    $topic = "$prefix/sensor/enshrouded_teleport_$safeName/config"
+    $json = $discoveryPayload | ConvertTo-Json -Depth 5 -Compress
+    Publish-Mqtt $client $topic $json $true
+    Log "Discovery teleport publie pour $playerName"
+}
+
 # --- Etat interne ---
 $state = @{
     Players       = [System.Collections.Generic.HashSet[string]]::new()
@@ -158,13 +189,14 @@ $state = @{
     PlayerIdToPlayer    = @{}        # player entity id -> player name
     PendingMachineQueue = [System.Collections.Queue]::new()      # [machine, playerId] waiting for name
     MachineStats        = @{}        # machine index -> @{ ping; lost; state }
+    DiscoveredPlayers   = [System.Collections.Generic.HashSet[string]]::new()  # players with discovery published
     LastTimestamp        = ""
     FileOffset          = [long]0
     LastFileSize         = [long]0
 }
 
 # --- Parseur de lignes de log ---
-function Parse-LogLine($line, $state) {
+function Parse-LogLine($line, $state, $client) {
     # Format: [LEVEL TIMESTAMP] [tag] message
     # ou format sans tag: [LEVEL TIMESTAMP] message
     if ($line -match '^\[([EWI])\s+([\d:,]+)\]\s+(.+)$') {
@@ -203,6 +235,10 @@ function Parse-LogLine($line, $state) {
                 $pending = $state.PendingMachineQueue.Dequeue()
                 $state.MachineToPlayer[$pending.Machine] = $playerName
                 $state.PlayerIdToPlayer[$pending.PlayerId] = $playerName
+            }
+            # Publier discovery teleport pour ce joueur (une seule fois)
+            if ($null -ne $client -and $state.DiscoveredPlayers.Add($playerName)) {
+                Publish-PlayerDiscovery $client $playerName
             }
             Log "Joueur connecte : $playerName (total: $($state.Players.Count))"
             return $true
@@ -294,13 +330,27 @@ function Parse-LogLine($line, $state) {
             $entityId = $Matches[1]
             $state.TeleportCount++
             $fromX = [Math]::Round([double]$Matches[2], 0)
+            $fromY = [Math]::Round([double]$Matches[3], 0)
             $fromZ = [Math]::Round([double]$Matches[4], 0)
             $toX = [Math]::Round([double]$Matches[5], 0)
+            $toY = [Math]::Round([double]$Matches[6], 0)
             $toZ = [Math]::Round([double]$Matches[7], 0)
             $who = if ($state.PlayerIdToPlayer.ContainsKey($entityId)) {
                 $state.PlayerIdToPlayer[$entityId]
             } else { "Player#$entityId" }
-            $state.LastTeleport = "$who ($fromX, $fromZ) -> ($toX, $toZ)"
+            $state.LastTeleport = "$who ($fromX, $fromY, $fromZ) -> ($toX, $toY, $toZ)"
+
+            # Publier l'evenement sur le topic du joueur pour historique HA
+            if ($null -ne $client) {
+                $safeName = $who -replace '[^a-zA-Z0-9_]', '_'
+                $teleportData = @{
+                    player = $who
+                    from   = @{ x = $fromX; y = $fromY; z = $fromZ }
+                    to     = @{ x = $toX; y = $toY; z = $toZ }
+                    time   = $state.LastTimestamp
+                } | ConvertTo-Json -Depth 3 -Compress
+                Publish-Mqtt $client "$topicPrefix/teleport/$safeName" $teleportData $false
+            }
             return $false
         }
 
@@ -480,7 +530,7 @@ while ($true) {
             $newLines = Read-NewLogLines $state
 
             foreach ($line in $newLines) {
-                Parse-LogLine $line $state | Out-Null
+                Parse-LogLine $line $state $client | Out-Null
             }
 
             # Publier l'etat courant
