@@ -122,13 +122,9 @@ Write-Host "Identifiants stockés dans Windows Credential Manager" -ForegroundCo
 
 Write-Host "`n=== 7. Configuration backup à l'arrêt ===" -ForegroundColor Cyan
 
-# Copier le script de backup
+# Référencer le script de backup depuis le repo local
 $backupScript = Join-Path $PSScriptRoot "backup.ps1"
-$backupDest = "$serverPath\backup.ps1"
-if (Test-Path $backupScript) {
-    Copy-Item -Path $backupScript -Destination $backupDest -Force
-    Write-Host "Script de backup copié dans $backupDest" -ForegroundColor Green
-} else {
+if (-not (Test-Path $backupScript)) {
     Write-Host "ATTENTION : backup.ps1 introuvable dans le repo" -ForegroundColor Red
 }
 
@@ -142,7 +138,7 @@ Write-Host "Timeout scripts GPO configuré à 300 secondes" -ForegroundColor Gre
 # Enregistrer le script de backup comme script d'arrêt GPO
 $gpoShutdownPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Group Policy\State\Machine\Scripts\Shutdown\0\0"
 New-Item -Path $gpoShutdownPath -Force | Out-Null
-Set-ItemProperty -Path $gpoShutdownPath -Name "Script" -Value $backupDest
+Set-ItemProperty -Path $gpoShutdownPath -Name "Script" -Value $backupScript
 Set-ItemProperty -Path $gpoShutdownPath -Name "Parameters" -Value ""
 Set-ItemProperty -Path $gpoShutdownPath -Name "IsPowershell" -Value 1
 Set-ItemProperty -Path $gpoShutdownPath -Name "ExecTime" -Value 0
