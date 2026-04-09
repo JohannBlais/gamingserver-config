@@ -94,7 +94,7 @@ nssm set EnshroudedServer AppDirectory $serverPath
 nssm set EnshroudedServer DisplayName "Enshrouded Dedicated Server"
 nssm set EnshroudedServer Description "Serveur dédié Enshrouded"
 nssm set EnshroudedServer Start SERVICE_AUTO_START
-nssm set EnshroudedServer AppRestartDelay 10000
+nssm set EnshroudedServer AppExit Default Exit
 nssm set EnshroudedServer AppStopMethodConsole 30000
 nssm set EnshroudedServer AppStopMethodWindow 30000
 $backupBat = Join-Path $PSScriptRoot "run-backup.bat"
