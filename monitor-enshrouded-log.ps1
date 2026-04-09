@@ -55,18 +55,14 @@ function Connect-Mqtt {
     $factory = [MQTTnet.MqttFactory]::new()
     $client = $factory.CreateMqttClient()
 
-    $lwtMessage = [MQTTnet.MqttApplicationMessageBuilder]::new()
-    $lwtMessage = $lwtMessage.WithTopic("$topicPrefix/status")
-    $lwtMessage = $lwtMessage.WithPayload("offline")
-    $lwtMessage = $lwtMessage.WithRetainFlag($true)
-    $lwtMessage = $lwtMessage.Build()
-
     $options = [MQTTnet.Client.MqttClientOptionsBuilder]::new()
     $options = $options.WithTcpServer($config.Broker, $config.Port)
     $options = $options.WithCredentials($config.Username, $config.Password)
     $options = $options.WithClientId("enshrouded-monitor")
     $options = $options.WithCleanSession($true)
-    $options = $options.WithWillApplicationMessage($lwtMessage)
+    $options = $options.WithWillTopic("$topicPrefix/status")
+    $options = $options.WithWillPayload("offline")
+    $options = $options.WithWillRetain($true)
     $options = $options.Build()
 
     $maxRetries = 3
