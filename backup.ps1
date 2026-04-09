@@ -17,6 +17,17 @@ function Log($msg) {
 
 Log "=== Début du backup ==="
 
+# Monter le partage réseau avec les credentials
+$credFile = "C:\source\gamingserver-config\network-credentials.cfg"
+if (Test-Path $credFile) {
+    $creds = Get-Content $credFile | ConvertFrom-StringData
+    Log "Connexion au partage réseau..."
+    net use "\\HomeServer\Backup" /user:$($creds.username) $($creds.password) 2>&1 | Out-Null
+    Log "Partage réseau connecté"
+} else {
+    Log "ATTENTION : fichier credentials introuvable ($credFile)"
+}
+
 $filesToBackup = @(
     "$serverPath\savegame",
     "$serverPath\enshrouded_server.json"
