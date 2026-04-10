@@ -115,6 +115,7 @@ function Publish-Discovery($client) {
         @{ id = "teleport_count";     name = "Teleport Count";     icon = "mdi:map-marker-path" }
         @{ id = "last_teleport";      name = "Last Teleport";      icon = "mdi:map-marker-radius" }
         @{ id = "teleport_history";    name = "Teleport History";    icon = "mdi:map-marker-multiple"; json_attr = $true }
+        @{ id = "teleport_map_svg";   name = "Teleport Map SVG";   icon = "mdi:map" }
         @{ id = "player_network";      name = "Player Network";      icon = "mdi:lan" }
         @{ id = "uptime";             name = "Uptime";             icon = "mdi:clock-outline" }
     )
@@ -199,6 +200,49 @@ $state = @{
     LastTimestamp        = ""
     FileOffset          = [long]0
     LastFileSize         = [long]0
+}
+
+# --- Couleurs par joueur pour la carte ---
+$playerColors = @{
+    "SaumonAgile"          = "#ff4444"
+    "antoine444444"        = "#44aaff"
+    "alice255436"          = "#44ff44"
+    "clairevoltzenlugel"   = "#ffaa00"
+}
+$defaultColor = "#ffffff"
+
+# --- Generation du SVG overlay des teleportations ---
+function Build-TeleportSvg($state) {
+    $sb = [System.Text.StringBuilder]::new()
+    $sb.Append('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10240 10240">') | Out-Null
+    $sb.Append('<defs>') | Out-Null
+
+    # Creer un marqueur fleche par couleur utilisee
+    $usedColors = @{}
+    foreach ($tp in $state.TeleportHistory) {
+        $color = if ($playerColors.ContainsKey($tp.player)) { $playerColors[$tp.player] } else { $defaultColor }
+        if (-not $usedColors.ContainsKey($color)) {
+            $cid = "a$($usedColors.Count)"
+            $usedColors[$color] = $cid
+            $sb.Append("<marker id=`"$cid`" markerWidth=`"10`" markerHeight=`"7`" refX=`"9`" refY=`"3.5`" orient=`"auto`"><polygon points=`"0 0,10 3.5,0 7`" fill=`"$color`"/></marker>") | Out-Null
+        }
+    }
+    $sb.Append('</defs>') | Out-Null
+
+    foreach ($tp in $state.TeleportHistory) {
+        $color = if ($playerColors.ContainsKey($tp.player)) { $playerColors[$tp.player] } else { $defaultColor }
+        $mid = $usedColors[$color]
+        $fx = [int]$tp.from.x
+        $fy = 10240 - [int]$tp.from.z
+        $tx = [int]$tp.to.x
+        $ty = 10240 - [int]$tp.to.z
+        $sb.Append("<line x1=`"$fx`" y1=`"$fy`" x2=`"$tx`" y2=`"$ty`" stroke=`"$color`" stroke-width=`"30`" opacity=`"0.8`" marker-end=`"url(#$mid)`"/>") | Out-Null
+        $sb.Append("<circle cx=`"$fx`" cy=`"$fy`" r=`"45`" fill=`"$color`" opacity=`"0.9`"/>") | Out-Null
+        $sb.Append("<circle cx=`"$tx`" cy=`"$ty`" r=`"45`" fill=`"none`" stroke=`"$color`" stroke-width=`"12`" opacity=`"0.9`"/>") | Out-Null
+    }
+
+    $sb.Append('</svg>') | Out-Null
+    return $sb.ToString()
 }
 
 # --- Calcul timestamp absolu ---
@@ -506,6 +550,10 @@ function Publish-State($client, $state) {
         entries = @($state.TeleportHistory)
     } | ConvertTo-Json -Depth 4 -Compress
     Publish-Mqtt $client "$topicPrefix/teleport_history"    $historyPayload          $true
+
+    # Generer et publier le SVG overlay de la carte
+    $svgOverlay = Build-TeleportSvg $state
+    Publish-Mqtt $client "$topicPrefix/teleport_map_svg"    $svgOverlay              $true
 
     # Construire le JSON player_network avec stats par joueur
     $playerNetworkData = @{}
