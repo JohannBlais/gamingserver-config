@@ -335,7 +335,10 @@ function Parse-LogLine($line, $state, $client) {
             $toX = [Math]::Round([double]$Matches[5], 0)
             $toY = [Math]::Round([double]$Matches[6], 0)
             $toZ = [Math]::Round([double]$Matches[7], 0)
-            $who = if ($state.PlayerIdToPlayer.ContainsKey($entityId)) {
+            # EntityId correspond au machine index, pas au player handle
+            $who = if ($state.MachineToPlayer.ContainsKey($entityId)) {
+                $state.MachineToPlayer[$entityId]
+            } elseif ($state.PlayerIdToPlayer.ContainsKey($entityId)) {
                 $state.PlayerIdToPlayer[$entityId]
             } else { "Player#$entityId" }
             $state.LastTeleport = "$who ($fromX, $fromY, $fromZ) -> ($toX, $toY, $toZ)"
