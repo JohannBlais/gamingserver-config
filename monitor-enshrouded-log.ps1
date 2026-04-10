@@ -305,9 +305,9 @@ function Parse-LogLine($line, $state, $client) {
         }
 
         # --- Performance ECSS ---
-        if ($tag -eq "ecss" -and $message -match 'Stats:.*Avg:([\d.]+)ms.*Max:(\d+)ms.*Ent:([\d,]+)') {
-            $state.TickAvg = [double]$Matches[1]
-            $state.TickMax = [int]$Matches[2]
+        if ($tag -eq "ecss" -and $message -match 'Stats:.*Max:(\d+)ms\s+Avg:([\d.]+)ms.*Ent:([\d,]+)') {
+            $state.TickMax = [int]$Matches[1]
+            $state.TickAvg = [double]$Matches[2]
             $state.EntityCount = [int]($Matches[3] -replace ',', '')
             return $false
         }
