@@ -114,6 +114,7 @@ function Publish-Discovery($client) {
         @{ id = "error_count";        name = "Error Count";        icon = "mdi:alert-circle" }
         @{ id = "teleport_count";     name = "Teleport Count";     icon = "mdi:map-marker-path" }
         @{ id = "last_teleport";      name = "Last Teleport";      icon = "mdi:map-marker-radius" }
+        @{ id = "teleport_history";    name = "Teleport History";    icon = "mdi:map-marker-multiple"; json_attr = $true }
         @{ id = "player_network";      name = "Player Network";      icon = "mdi:lan" }
         @{ id = "uptime";             name = "Uptime";             icon = "mdi:clock-outline" }
     )
@@ -131,6 +132,9 @@ function Publish-Discovery($client) {
         }
         if ($sensor.unit) {
             $discoveryPayload.unit_of_measurement = $sensor.unit
+        }
+        if ($sensor.json_attr) {
+            $discoveryPayload.json_attributes_topic = "$topicPrefix/$($sensor.id)"
         }
 
         $topic = "$prefix/sensor/enshrouded_$($sensor.id)/config"
@@ -185,6 +189,7 @@ $state = @{
     ErrorCount    = 0
     TeleportCount       = 0
     LastTeleport        = ""
+    TeleportHistory     = [System.Collections.ArrayList]::new()  # 15 derniers teleports
     MachineToPlayer     = @{}        # machine index -> player name
     PlayerIdToPlayer    = @{}        # player entity id -> player name
     PendingMachineQueue = [System.Collections.Queue]::new()      # [machine, playerId] waiting for name
@@ -357,16 +362,23 @@ function Parse-LogLine($line, $state, $client) {
             } else { "Player#$entityId" }
             $state.LastTeleport = "$who ($fromX, $fromY, $fromZ) -> ($toX, $toY, $toZ)"
 
+            # Ajouter a l'historique (garder les 15 derniers)
+            $absTime = Get-AbsoluteTime $state
+            $entry = @{
+                player = $who
+                from   = @{ x = $fromX; y = $fromY; z = $fromZ }
+                to     = @{ x = $toX; y = $toY; z = $toZ }
+                time   = $absTime
+            }
+            $state.TeleportHistory.Add($entry) | Out-Null
+            while ($state.TeleportHistory.Count -gt 15) {
+                $state.TeleportHistory.RemoveAt(0)
+            }
+
             # Publier l'evenement sur le topic du joueur pour historique HA
             if ($null -ne $client) {
                 $safeName = $who -replace '[^a-zA-Z0-9_]', '_'
-                $absTime = Get-AbsoluteTime $state
-                $teleportData = @{
-                    player = $who
-                    from   = @{ x = $fromX; y = $fromY; z = $fromZ }
-                    to     = @{ x = $toX; y = $toY; z = $toZ }
-                    time   = $absTime
-                } | ConvertTo-Json -Depth 3 -Compress
+                $teleportData = $entry | ConvertTo-Json -Depth 3 -Compress
                 Publish-Mqtt $client "$topicPrefix/teleport/$safeName" $teleportData $false
             }
             return $false
@@ -390,6 +402,7 @@ function Parse-LogLine($line, $state, $client) {
             $state.ErrorCount = 0
             $state.TeleportCount = 0
             $state.LastTeleport = ""
+            $state.TeleportHistory.Clear()
             $state.Players.Clear()
             $state.MachineToPlayer = @{}
             $state.PlayerIdToPlayer = @{}
@@ -486,6 +499,13 @@ function Publish-State($client, $state) {
     Publish-Mqtt $client "$topicPrefix/error_count"         $state.ErrorCount        $true
     Publish-Mqtt $client "$topicPrefix/teleport_count"      $state.TeleportCount     $true
     Publish-Mqtt $client "$topicPrefix/last_teleport"       $state.LastTeleport      $true
+
+    # Publier l'historique des teleportations (JSON avec attributs)
+    $historyPayload = @{
+        count   = $state.TeleportHistory.Count
+        entries = @($state.TeleportHistory)
+    } | ConvertTo-Json -Depth 4 -Compress
+    Publish-Mqtt $client "$topicPrefix/teleport_history"    $historyPayload          $true
 
     # Construire le JSON player_network avec stats par joueur
     $playerNetworkData = @{}
