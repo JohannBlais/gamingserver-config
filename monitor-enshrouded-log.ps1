@@ -190,9 +190,23 @@ $state = @{
     PendingMachineQueue = [System.Collections.Queue]::new()      # [machine, playerId] waiting for name
     MachineStats        = @{}        # machine index -> @{ ping; lost; state }
     DiscoveredPlayers   = [System.Collections.Generic.HashSet[string]]::new()  # players with discovery published
+    ServerStartUtc      = $null     # [DateTime] UTC du demarrage serveur
     LastTimestamp        = ""
     FileOffset          = [long]0
     LastFileSize         = [long]0
+}
+
+# --- Calcul timestamp absolu ---
+function Get-AbsoluteTime($state) {
+    if ($null -eq $state.ServerStartUtc -or $state.LastTimestamp -eq "") {
+        return ""
+    }
+    if ($state.LastTimestamp -match '^(\d+):(\d+):(\d+),?(\d*)') {
+        $offset = [TimeSpan]::new([int]$Matches[1], [int]$Matches[2], [int]$Matches[3])
+        $utc = $state.ServerStartUtc.Add($offset)
+        return $utc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+    }
+    return ""
 }
 
 # --- Parseur de lignes de log ---
@@ -346,14 +360,27 @@ function Parse-LogLine($line, $state, $client) {
             # Publier l'evenement sur le topic du joueur pour historique HA
             if ($null -ne $client) {
                 $safeName = $who -replace '[^a-zA-Z0-9_]', '_'
+                $absTime = Get-AbsoluteTime $state
                 $teleportData = @{
                     player = $who
                     from   = @{ x = $fromX; y = $fromY; z = $fromZ }
                     to     = @{ x = $toX; y = $toY; z = $toZ }
-                    time   = $state.LastTimestamp
+                    time   = $absTime
                 } | ConvertTo-Json -Depth 3 -Compress
                 Publish-Mqtt $client "$topicPrefix/teleport/$safeName" $teleportData $false
             }
+            return $false
+        }
+
+        # --- Date UTC de demarrage (une seule fois au boot) ---
+        # "Current UTC date: 2026.04.09 11:16:16"
+        if ($tag -eq "" -and $message -match '^Current UTC date:\s*(\d{4})\.(\d{2})\.(\d{2})\s+(\d{2}):(\d{2}):(\d{2})') {
+            $state.ServerStartUtc = [DateTime]::new(
+                [int]$Matches[1], [int]$Matches[2], [int]$Matches[3],
+                [int]$Matches[4], [int]$Matches[5], [int]$Matches[6],
+                [System.DateTimeKind]::Utc
+            )
+            Log "Date demarrage serveur : $($state.ServerStartUtc.ToString('u'))"
             return $false
         }
 
