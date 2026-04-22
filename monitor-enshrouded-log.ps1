@@ -11,6 +11,7 @@ $scriptDir = $PSScriptRoot
 # --- Configuration ---
 $serverPath      = "C:\SteamApps\EnshroudedServer"
 $logPath         = "$serverPath\logs\enshrouded_server.log"
+$serverConfigPath = "$serverPath\enshrouded_server.json"
 $monitorLogFile  = "C:\source\gamingserver-config\monitor.log"
 $mqttConfigPath  = "C:\Program Files (x86)\LAB02 Research\HASS.Agent Satellite Service\config\servicemqttsettings.json"
 $mqttnetDllPath  = Join-Path $scriptDir "lib\MQTTnet.dll"
@@ -116,6 +117,8 @@ function Publish-Discovery($client) {
         @{ id = "last_teleport";      name = "Last Teleport";      icon = "mdi:map-marker-radius" }
         @{ id = "teleport_history";    name = "Teleport History";    icon = "mdi:map-marker-multiple"; json_attr = $true }
         @{ id = "player_network";      name = "Player Network";      icon = "mdi:lan" }
+        @{ id = "public_ip";          name = "Public IP";          icon = "mdi:ip-network" }
+        @{ id = "server_url";         name = "Server URL";         icon = "mdi:link-variant" }
         @{ id = "uptime";             name = "Uptime";             icon = "mdi:clock-outline" }
     )
 
@@ -196,11 +199,27 @@ $state = @{
     MachineStats        = @{}        # machine index -> @{ ping; lost; state }
     DiscoveredPlayers   = [System.Collections.Generic.HashSet[string]]::new()  # players with discovery published
     ServerStartUtc      = $null     # [DateTime] UTC du demarrage serveur
+    PublicIp             = ""         # IP publique du serveur
+    GamePort             = 15637      # Port de jeu (lu depuis enshrouded_server.json)
     LastTimestamp        = ""
     FileOffset          = [long]0
     LastFileSize         = [long]0
 }
 
+
+# --- Lecture du port depuis la config serveur ---
+function Read-ServerPort {
+    if (-not (Test-Path $serverConfigPath)) {
+        return 15637  # defaut Enshrouded
+    }
+    try {
+        $config = Get-Content $serverConfigPath -Raw | ConvertFrom-Json
+        if ($config.queryPort) { return [int]$config.queryPort }
+    } catch {
+        Log "ERREUR lecture $serverConfigPath : $_"
+    }
+    return 15637
+}
 
 # --- Calcul timestamp absolu ---
 function Get-AbsoluteTime($state) {
@@ -397,6 +416,14 @@ function Parse-LogLine($line, $state, $client) {
             return $false
         }
 
+        # --- IP publique du serveur ---
+        # "[online] Public ipv4: 88.175.120.45"
+        if ($tag -eq "online" -and $message -match '^Public ipv4:\s*(\S+)') {
+            $state.PublicIp = $Matches[1]
+            Log "IP publique detectee : $($state.PublicIp)"
+            return $false
+        }
+
         # --- Demarrage serveur ---
         if ($tag -eq "online" -and $message -match 'Server connected to Steam successfully') {
             $state.ServerStatus = "online"
@@ -409,7 +436,8 @@ function Parse-LogLine($line, $state, $client) {
             $state.PlayerIdToPlayer = @{}
             $state.MachineStats = @{}
             $state.PendingMachineQueue.Clear()
-            Log "Serveur Enshrouded demarre"
+            $state.GamePort = Read-ServerPort
+            Log "Serveur Enshrouded demarre (port: $($state.GamePort))"
             return $true
         }
 
@@ -526,6 +554,11 @@ function Publish-State($client, $state) {
     } else { "{}" }
     Publish-Mqtt $client "$topicPrefix/player_network"      $networkJson             $true
 
+    # Infos reseau du serveur
+    $serverUrl = if ($state.PublicIp) { "$($state.PublicIp):$($state.GamePort)" } else { "" }
+    Publish-Mqtt $client "$topicPrefix/public_ip"           $state.PublicIp          $true
+    Publish-Mqtt $client "$topicPrefix/server_url"          $serverUrl               $true
+
     Publish-Mqtt $client "$topicPrefix/uptime"              $uptime                  $true
 }
 
@@ -534,6 +567,10 @@ function Publish-State($client, $state) {
 # =============================================================================
 
 Log "=== Demarrage du moniteur Enshrouded ==="
+
+# Lire le port du serveur depuis sa config
+$state.GamePort = Read-ServerPort
+Log "Port serveur configure : $($state.GamePort)"
 
 # --- Initialisation avec retry infini ---
 # Si MQTTnet ou le broker ne sont pas disponibles, on attend plutot que crasher.
