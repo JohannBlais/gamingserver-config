@@ -119,8 +119,8 @@ function Publish-Discovery($client) {
         @{ id = "player_network";      name = "Player Network";      icon = "mdi:lan" }
         @{ id = "public_ip";          name = "Public IP";          icon = "mdi:ip-network" }
         @{ id = "local_ip";           name = "Local IP";           icon = "mdi:ip-network-outline" }
-        @{ id = "server_url";         name = "Server URL (public)"; icon = "mdi:link-variant" }
-        @{ id = "local_url";          name = "Server URL (LAN)";   icon = "mdi:lan" }
+        @{ id = "server_url";         name = "Public URL";         icon = "mdi:link-variant" }
+        @{ id = "local_url";          name = "Local URL";          icon = "mdi:lan" }
         @{ id = "uptime";             name = "Uptime";             icon = "mdi:clock-outline" }
     )
 
