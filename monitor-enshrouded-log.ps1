@@ -118,7 +118,9 @@ function Publish-Discovery($client) {
         @{ id = "teleport_history";    name = "Teleport History";    icon = "mdi:map-marker-multiple"; json_attr = $true }
         @{ id = "player_network";      name = "Player Network";      icon = "mdi:lan" }
         @{ id = "public_ip";          name = "Public IP";          icon = "mdi:ip-network" }
-        @{ id = "server_url";         name = "Server URL";         icon = "mdi:link-variant" }
+        @{ id = "local_ip";           name = "Local IP";           icon = "mdi:ip-network-outline" }
+        @{ id = "server_url";         name = "Server URL (public)"; icon = "mdi:link-variant" }
+        @{ id = "local_url";          name = "Server URL (LAN)";   icon = "mdi:lan" }
         @{ id = "uptime";             name = "Uptime";             icon = "mdi:clock-outline" }
     )
 
@@ -206,6 +208,18 @@ $state = @{
     LastFileSize         = [long]0
 }
 
+
+# --- Detection de l'IP locale ---
+function Get-LocalIp {
+    try {
+        $ip = Get-NetIPConfiguration |
+            Where-Object { $_.IPv4DefaultGateway -ne $null -and $_.NetAdapter.Status -eq 'Up' } |
+            Select-Object -First 1 -ExpandProperty IPv4Address |
+            Select-Object -First 1 -ExpandProperty IPAddress
+        if ($ip) { return $ip }
+    } catch {}
+    return ""
+}
 
 # --- Lecture du port depuis la config serveur ---
 function Read-ServerPort {
@@ -555,9 +569,13 @@ function Publish-State($client, $state) {
     Publish-Mqtt $client "$topicPrefix/player_network"      $networkJson             $true
 
     # Infos reseau du serveur
+    $localIp = Get-LocalIp
     $serverUrl = if ($state.PublicIp) { "$($state.PublicIp):$($state.GamePort)" } else { "" }
+    $localUrl = if ($localIp) { "${localIp}:$($state.GamePort)" } else { "" }
     Publish-Mqtt $client "$topicPrefix/public_ip"           $state.PublicIp          $true
+    Publish-Mqtt $client "$topicPrefix/local_ip"            $localIp                 $true
     Publish-Mqtt $client "$topicPrefix/server_url"          $serverUrl               $true
+    Publish-Mqtt $client "$topicPrefix/local_url"           $localUrl                $true
 
     Publish-Mqtt $client "$topicPrefix/uptime"              $uptime                  $true
 }
