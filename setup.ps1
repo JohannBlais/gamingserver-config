@@ -266,6 +266,31 @@ function New-MonitorService {
     Write-Host "Service configure (auto-start, depend de EnshroudedServer)" -ForegroundColor Green
 }
 
+function Update-MonitorScript {
+    Write-Host "`n=== Mise a jour du script de monitoring ===" -ForegroundColor Cyan
+
+    $gitDir = Join-Path $scriptDir ".git"
+    if (-not (Test-Path $gitDir)) {
+        Write-Host "ERREUR : $scriptDir n'est pas un repo git" -ForegroundColor Red
+        return
+    }
+
+    Write-Host "git pull dans $scriptDir..."
+    Push-Location $scriptDir
+    try {
+        git pull --ff-only
+    } finally {
+        Pop-Location
+    }
+
+    $wasRunning = Stop-ServiceIfRunning "EnshroudedMonitor"
+    if (-not $wasRunning) {
+        Write-Host "Service EnshroudedMonitor n'etait pas en cours, demarrage..." -ForegroundColor Yellow
+    }
+    nssm start EnshroudedMonitor | Out-Null
+    Write-Host "Service EnshroudedMonitor demarre" -ForegroundColor Green
+}
+
 function Start-EnshroudedServerPrompt {
     Write-Host "`n=== Demarrage du serveur ===" -ForegroundColor Cyan
     $startNow = Read-Host "Demarrer le serveur Enshrouded maintenant ? (O/N)"
@@ -335,6 +360,7 @@ function Show-IndividualMenu {
         Write-Host "  6. Recreer le service EnshroudedServer"
         Write-Host "  7. Recreer le service EnshroudedMonitor"
         Write-Host "  8. Mettre a jour les identifiants partage reseau"
+        Write-Host "  9. Mise a jour du script de monitoring (git pull + restart)"
         Write-Host "  R. Retour au menu principal"
         $choice = Read-Host "`nChoix"
         switch ($choice.ToUpper()) {
@@ -346,6 +372,7 @@ function Show-IndividualMenu {
             "6" { New-EnshroudedService }
             "7" { New-MonitorService }
             "8" { Set-NetworkCredentials }
+            "9" { Update-MonitorScript }
             "R" { return }
             default { Write-Host "Choix invalide" -ForegroundColor Red }
         }
@@ -359,13 +386,15 @@ function Show-MainMenu {
         Write-Host "=====================================================" -ForegroundColor Cyan
         Write-Host "  1. Installation complete initiale"
         Write-Host "  2. Mise a jour des composants (SteamCMD, Enshrouded, NSSM, MQTTnet)"
-        Write-Host "  3. Actions individuelles..."
+        Write-Host "  3. Mise a jour du script de monitoring (git pull + restart)"
+        Write-Host "  4. Actions individuelles..."
         Write-Host "  Q. Quitter"
         $choice = Read-Host "`nChoix"
         switch ($choice.ToUpper()) {
             "1" { Invoke-FullSetup }
             "2" { Invoke-UpdateComponents }
-            "3" { Show-IndividualMenu }
+            "3" { Update-MonitorScript }
+            "4" { Show-IndividualMenu }
             "Q" { return }
             default { Write-Host "Choix invalide" -ForegroundColor Red }
         }
