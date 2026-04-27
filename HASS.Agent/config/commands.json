@@ -14,7 +14,7 @@
     "Name": "GAMING-SERVER_StartEnshrouded",
     "Type": "CustomCommand",
     "EntityType": "button",
-    "Command": "net start EnshroudedServer",
+    "Command": "net start EnshroudedServer && net start EnshroudedMonitor",
     "KeyCode": 0,
     "RunAsLowIntegrity": false,
     "Keys": []
@@ -24,7 +24,7 @@
     "Name": "GAMING-SERVER_StopEnshrouded",
     "Type": "CustomCommand",
     "EntityType": "button",
-    "Command": "net stop EnshroudedServer",
+    "Command": "net stop EnshroudedServer /Y",
     "KeyCode": 0,
     "RunAsLowIntegrity": false,
     "Keys": []
