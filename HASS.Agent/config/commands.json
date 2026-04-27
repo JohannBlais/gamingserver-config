@@ -12,7 +12,7 @@
   {
     "Id": "a0acec03-dc8b-41ed-970d-211ace14eccd",
     "Name": "GAMING-SERVER_StartEnshrouded",
-    "Type": "PowershellCommand",
+    "Type": "CustomCommand",
     "EntityType": "button",
     "Command": "net start EnshroudedServer",
     "KeyCode": 0,
@@ -22,7 +22,7 @@
   {
     "Id": "9a1c6a23-3970-48e2-a343-455cbac183e9",
     "Name": "GAMING-SERVER_StopEnshrouded",
-    "Type": "PowershellCommand",
+    "Type": "CustomCommand",
     "EntityType": "button",
     "Command": "net stop EnshroudedServer",
     "KeyCode": 0,
