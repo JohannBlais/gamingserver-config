@@ -319,6 +319,30 @@ function Parse-LogLine($line, $state, $client) {
             return $true
         }
 
+        # --- Deconnexion par timeout ---
+        # Sur timeout, le serveur ne log PAS "Remove Player 'NAME'", seulement la sequence
+        # [online] Timeout for peer -> [online] Removed peer -> [session] Player removed.
+        # Ce handler attrape "[session] Player removed. Player handle: N(M)" qui fire
+        # aussi sur deco propre, mais alors PlayerIdToPlayer a deja ete vide -> no-op.
+        if ($tag -eq "session" -and $message -match "^Player removed\. Player handle: (\d+)\(\d+\)") {
+            $playerId = $Matches[1]
+            if ($state.PlayerIdToPlayer.ContainsKey($playerId)) {
+                $playerName = $state.PlayerIdToPlayer[$playerId]
+                $state.Players.Remove($playerName) | Out-Null
+                $state.PlayerIdToPlayer.Remove($playerId)
+                $machineToRemove = $state.MachineToPlayer.GetEnumerator() |
+                    Where-Object { $_.Value -eq $playerName } |
+                    Select-Object -First 1 -ExpandProperty Key
+                if ($null -ne $machineToRemove) {
+                    $state.MachineToPlayer.Remove($machineToRemove)
+                    $state.MachineStats.Remove($machineToRemove)
+                }
+                Log "Joueur deconnecte (timeout) : $playerName (total: $($state.Players.Count))"
+                return $true
+            }
+            return $false
+        }
+
         # --- Session telemetry (m#N) ---
         # "  m#1(129): up 256 (270), down 23 (25), remote 255 (269), limit 1081, lost 11, ping 31 ms, OperatingNormally"
         if ($tag -eq "" -and $message -match '^\s*m#(\d+)\(\d+\):.*lost (\d+),\s*ping (\d+) ms,\s*(\S+)') {
