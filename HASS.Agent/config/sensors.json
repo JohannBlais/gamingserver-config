@@ -36,6 +36,18 @@
     "Name": "GAMING-SERVER-servicestate"
   },
   {
+    "Type": "CurrentClockSpeedSensor",
+    "Id": "92e65926-0d6d-4050-94ef-a5216985c8e3",
+    "UpdateInterval": 300,
+    "Query": "",
+    "Scope": "",
+    "WindowName": "",
+    "Category": "",
+    "Counter": "",
+    "Instance": "",
+    "Name": "GAMING-SERVER_currentclockspeed"
+  },
+  {
     "Type": "StorageSensors",
     "Id": "5a84c93b-4fab-48db-8679-6a32357ed4d1",
     "UpdateInterval": 30,
@@ -46,5 +58,17 @@
     "Counter": "",
     "Instance": "",
     "Name": "GAMING-SERVER-storage"
+  },
+  {
+    "Type": "NetworkSensors",
+    "Id": "1db99c32-a41f-4d9f-b6fe-0dcea197a44d",
+    "UpdateInterval": 30,
+    "Query": "*",
+    "Scope": null,
+    "WindowName": "",
+    "Category": "",
+    "Counter": "",
+    "Instance": "",
+    "Name": "GAMING-SERVER_network"
   }
 ]
