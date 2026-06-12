@@ -28,5 +28,15 @@
     "KeyCode": 0,
     "RunAsLowIntegrity": false,
     "Keys": []
+  },
+  {
+    "Id": "4de7235e-f48c-4bec-b9de-38d2d8b8d6c0",
+    "Name": "GAMING-SERVER_UpdateEnshrouded",
+    "Type": "CustomCommand",
+    "EntityType": "button",
+    "Command": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Start-Process powershell -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','C:\\source\\gamingserver-config\\update-enshrouded.ps1' -WindowStyle Hidden\"",
+    "KeyCode": 0,
+    "RunAsLowIntegrity": false,
+    "Keys": []
   }
 ]

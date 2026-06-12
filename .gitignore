@@ -1,4 +1,6 @@
 backup.log
 monitor.log
+update.log
+update.lock
 network-credentials.cfg
 lib/

@@ -54,6 +54,7 @@ Ce script configure automatiquement :
 | `init.ps1` | Bootstrap : installe Git et clone le repo |
 | `setup.ps1` | Provisionnement complet de la machine |
 | `backup.ps1` | Sauvegarde des saves et config vers `\\HomeServer\Backup\Enshrouded Server` |
+| `update-enshrouded.ps1` | Met à jour le serveur via SteamCMD (arrêt services → MAJ → restauration de l'état). Déclenché par le bouton HA `GAMING-SERVER_UpdateEnshrouded` ou manuellement. |
 
 ## Structure
 
@@ -62,6 +63,7 @@ gamingserver-config/
   init.ps1                  # Bootstrap
   setup.ps1                 # Setup complet
   backup.ps1                # Backup (déclenché au shutdown)
+  update-enshrouded.ps1     # MAJ SteamCMD (déclenché par le bouton HA Update)
   HASS.Agent/config/        # Configs HASS.Agent Satellite Service
     commands.json            # Commandes MQTT (start/stop/shutdown)
     sensors.json             # Sensors MQTT (CPU, RAM, service state, storage)
@@ -74,5 +76,7 @@ gamingserver-config/
 La machine est pilotée depuis HA via :
 
 - **Wake-on-LAN** (`switch.serveur_enshrouded`) — allumage à distance
-- **HASS.Agent MQTT** — monitoring CPU/RAM/service state + commandes start/stop/shutdown
+- **HASS.Agent MQTT** — monitoring CPU/RAM/service state + commandes start/stop/shutdown/update
 - **Dashboard** — onglet Enshrouded dans le dashboard Virtual Machines
+
+Le bouton **Update** (`button.gaming_server_updateenshrouded`) lance `update-enshrouded.ps1` en arrière-plan : la mise à jour SteamCMD peut durer plusieurs minutes. Pendant ce temps les capteurs `enshrouded/*` (issus du moniteur) sont indisponibles ; suivre plutôt le capteur `GAMING-SERVER-servicestate` qui repasse à *Running* une fois le serveur redémarré.
