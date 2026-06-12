@@ -200,15 +200,34 @@ function Copy-HassAgentConfig {
     $hassAgentConfigDest = "C:\Program Files (x86)\LAB02 Research\HASS.Agent Satellite Service\config"
     if (Test-Path $hassAgentConfigDest) {
         $configSource = Join-Path $scriptDir "HASS.Agent\config"
-        Copy-Item -Path "$configSource\*" -Destination $hassAgentConfigDest -Force
-        Write-Host "Configs HASS.Agent copiees" -ForegroundColor Green
+
+        # Fichiers sans secret : le repo est la source de verite, on ecrase toujours.
+        foreach ($file in @("commands.json", "sensors.json")) {
+            Copy-Item -Path (Join-Path $configSource $file) -Destination $hassAgentConfigDest -Force
+        }
+        Write-Host "commands.json et sensors.json copies" -ForegroundColor Green
+
+        # Fichiers a secrets : ne copier que s'ils n'existent pas encore. Sinon on
+        # ecraserait les vraies valeurs (AuthId du service, identifiants MQTT) avec
+        # les placeholders du repo, ce qui casse l'integration.
+        foreach ($file in @("servicesettings.json", "servicemqttsettings.json")) {
+            $dst = Join-Path $hassAgentConfigDest $file
+            if (Test-Path $dst) {
+                Write-Host "$file deja present, conserve (placeholders non copies)" -ForegroundColor Yellow
+            } else {
+                Copy-Item -Path (Join-Path $configSource $file) -Destination $dst -Force
+                Write-Host "$file cree depuis le repo (a completer, voir ci-dessous)" -ForegroundColor Green
+            }
+        }
         Write-Host @"
-  IMPORTANT : remplacer les placeholders dans les fichiers suivants :
+  IMPORTANT : si servicemqttsettings.json / servicesettings.json viennent
+  d'etre crees, remplacer les placeholders :
   - $hassAgentConfigDest\servicemqttsettings.json
-      <MQTT_USERNAME>  -> nom d'utilisateur Home Assistant
-      <MQTT_PASSWORD>  -> mot de passe Home Assistant
+      <MQTT_USERNAME>  -> nom d'utilisateur MQTT (Home Assistant)
+      <MQTT_PASSWORD>  -> mot de passe MQTT (Home Assistant)
   - $hassAgentConfigDest\servicesettings.json
-      <HA_LONG_LIVED_TOKEN>  -> token cree dans HA (Profil > Jetons d'acces longue duree)
+      <HA_LONG_LIVED_TOKEN>  -> Auth ID du service Satellite (la valeur demandee
+                               par la GUI "Satellite Service Configuration")
 "@ -ForegroundColor Yellow
     } else {
         Write-Host @"
